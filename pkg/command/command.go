@@ -8,22 +8,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	name           = "chirp"
+	qualified_name = "com.wabenet.chirp"
+	description    = "Access system clipboard over network"
+)
+
+var opts options
+
 type options struct {
 	socketType string
 	address    string
 }
 
-var opts options
-
 func NewCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "chirp",
-		Short: "Access system clipboard over network",
-	}
-
+	cmd := &cobra.Command{Use: name, Short: description}
 	cmd.AddCommand(NewServerCommand())
 	cmd.AddCommand(NewCopyCommand())
 	cmd.AddCommand(NewPasteCommand())
+	cmd.AddCommand(NewServiceCommand())
 
 	flags := cmd.PersistentFlags()
 	flags.StringVarP(&opts.socketType, "type", "t", "tcp", "socket type to listen on (tcp or unix)")
