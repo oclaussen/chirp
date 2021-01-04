@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"time"
 
 	api "github.com/oclaussen/chirp/api/v1"
 	"google.golang.org/grpc"
@@ -22,22 +21,23 @@ func NewClient(socketType string, addr string) (*ClipboardClient, error) {
 	if socketType == "unix" {
 		addr, err := filepath.Abs(addr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not get socket path: %w", err)
 		}
+
 		if _, err := os.Stat(addr); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not get unix socket: %w", err)
 		}
 	}
 
 	conn, err := grpc.Dial(
 		addr,
 		grpc.WithInsecure(),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout(socketType, addr, timeout)
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			return net.Dial(socketType, addr)
 		}),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not connect to server: %w", err)
 	}
 
 	return &ClipboardClient{
@@ -53,11 +53,11 @@ func (c *ClipboardClient) Close() {
 func (c *ClipboardClient) Copy() error {
 	bytes, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not read stdin data: %w", err)
 	}
 
 	if _, err := c.client.Copy(context.Background(), &api.CopyRequest{Contents: string(bytes)}); err != nil {
-		return err
+		return fmt.Errorf("could not send copy command: %w", err)
 	}
 
 	return nil
@@ -66,9 +66,10 @@ func (c *ClipboardClient) Copy() error {
 func (c *ClipboardClient) Paste() error {
 	response, err := c.client.Paste(context.Background(), &api.PasteRequest{})
 	if err != nil {
-		return err
+		return fmt.Errorf("could not send paste command: %w", err)
 	}
 
 	fmt.Print(response.Contents)
+
 	return nil
 }

@@ -5,8 +5,6 @@ package clipboard
 import (
 	"os"
 	"os/exec"
-
-	"github.com/pkg/errors"
 )
 
 func copyCmd() (*exec.Cmd, error) {
@@ -28,7 +26,7 @@ func copyCmd() (*exec.Cmd, error) {
 		return exec.Command("termux-clipboard-set"), nil
 	}
 
-	return nil, errors.New("no clipboard found")
+	return nil, ErrNoClipboardFound
 }
 
 func pasteCmd() (*exec.Cmd, error) {
@@ -50,5 +48,5 @@ func pasteCmd() (*exec.Cmd, error) {
 		return exec.Command("termux-clipboard-get"), nil
 	}
 
-	return nil, errors.New("no clipboard found")
+	return nil, ErrNoClipboardFound
 }

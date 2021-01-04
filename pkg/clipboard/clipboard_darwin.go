@@ -4,8 +4,6 @@ package clipboard
 
 import (
 	"os/exec"
-
-	"github.com/pkg/errors"
 )
 
 func copyCmd() (*exec.Cmd, error) {
@@ -13,7 +11,7 @@ func copyCmd() (*exec.Cmd, error) {
 		return exec.Command("pbcopy"), nil
 	}
 
-	return nil, errors.New("no clipboard found")
+	return nil, ErrNoClipboardFound
 }
 
 func pasteCmd() (*exec.Cmd, error) {
@@ -21,5 +19,5 @@ func pasteCmd() (*exec.Cmd, error) {
 		return exec.Command("pbpaste"), nil
 	}
 
-	return nil, errors.New("no clipboard found")
+	return nil, ErrNoClipboardFound
 }

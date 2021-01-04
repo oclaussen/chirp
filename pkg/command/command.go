@@ -1,15 +1,17 @@
 package command
 
 import (
+	"fmt"
+
 	"github.com/oclaussen/chirp/pkg/chirp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 const (
-	name           = "chirp"
-	qualified_name = "com.wabenet.chirp"
-	description    = "Access system clipboard over network"
+	name          = "chirp"
+	qualifiedName = "com.wabenet.chirp"
+	description   = "Access system clipboard over network"
 )
 
 var opts options
@@ -22,6 +24,7 @@ type options struct {
 func Execute() int {
 	if err := NewCommand().Execute(); err != nil {
 		log.Error(err)
+
 		return 1
 	}
 
@@ -48,6 +51,7 @@ func NewServerCommand() *cobra.Command {
 		Short: "Start in server mode and wait for incoming clipboard requests",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serverLogging()
+
 			return chirp.Server(opts.socketType, opts.address)
 		},
 	}
@@ -62,7 +66,7 @@ func NewCopyCommand() *cobra.Command {
 
 			client, err := chirp.NewClient(opts.socketType, opts.address)
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot create chirp client: %w", err)
 			}
 
 			return client.Copy()
@@ -79,7 +83,7 @@ func NewPasteCommand() *cobra.Command {
 
 			client, err := chirp.NewClient(opts.socketType, opts.address)
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot create chirp client: %w", err)
 			}
 
 			return client.Paste()

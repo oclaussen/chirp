@@ -18,6 +18,7 @@ func NewServiceCommand() *cobra.Command {
 	cmd.AddCommand(NewServiceUninstallCommand())
 	cmd.AddCommand(NewServiceStartCommand())
 	cmd.AddCommand(NewServiceStopCommand())
+
 	return cmd
 }
 
@@ -36,6 +37,7 @@ func NewServiceInstallCommand() *cobra.Command {
 			return svc.Install()
 		},
 	}
+
 	return cmd
 }
 
@@ -54,6 +56,7 @@ func NewServiceUninstallCommand() *cobra.Command {
 			return svc.Uninstall()
 		},
 	}
+
 	return cmd
 }
 
@@ -68,9 +71,11 @@ func NewServiceStartCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			return svc.Start()
 		},
 	}
+
 	return cmd
 }
 
@@ -89,6 +94,7 @@ func NewServiceStopCommand() *cobra.Command {
 			return svc.Stop()
 		},
 	}
+
 	return cmd
 }
 
@@ -104,7 +110,7 @@ func (p *program) Stop(_ service.Service) error {
 
 func newService() (service.Service, error) {
 	config := &service.Config{
-		Name:        qualified_name,
+		Name:        qualifiedName,
 		DisplayName: name,
 		Description: description,
 		Option:      map[string]interface{}{},
