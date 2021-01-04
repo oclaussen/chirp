@@ -1,64 +1,74 @@
 package chirp
 
 import (
-	"io"
+	"context"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"time"
+
+	api "github.com/oclaussen/chirp/api/v1"
+	"google.golang.org/grpc"
 )
 
-func Copy(socketType string, addr string) error {
+type ClipboardClient struct {
+	conn   *grpc.ClientConn
+	client api.ClipboardServiceClient
+}
+
+func NewClient(socketType string, addr string) (*ClipboardClient, error) {
 	if socketType == "unix" {
 		addr, err := filepath.Abs(addr)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if _, err := os.Stat(addr); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	conn, err := net.Dial(socketType, addr)
+	conn, err := grpc.Dial(
+		addr,
+		grpc.WithInsecure(),
+		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			return net.DialTimeout(socketType, addr, timeout)
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClipboardClient{
+		conn:   conn,
+		client: api.NewClipboardServiceClient(conn),
+	}, nil
+}
+
+func (c *ClipboardClient) Close() {
+	c.conn.Close()
+}
+
+func (c *ClipboardClient) Copy() error {
+	bytes, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 
-	if _, err := conn.Write([]byte(copyCmd)); err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(conn, os.Stdin); err != nil {
+	if _, err := c.client.Copy(context.Background(), &api.CopyRequest{Contents: string(bytes)}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func Paste(socketType string, addr string) error {
-	if socketType == "unix" {
-		addr, err := filepath.Abs(addr)
-		if err != nil {
-			return err
-		}
-		if _, err := os.Stat(addr); err != nil {
-			return err
-		}
-	}
-
-	conn, err := net.Dial(socketType, addr)
+func (c *ClipboardClient) Paste() error {
+	response, err := c.client.Paste(context.Background(), &api.PasteRequest{})
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 
-	if _, err := conn.Write([]byte(pasteCmd)); err != nil {
-		return err
-	}
-
-	if _, err = io.Copy(os.Stdout, conn); err != nil {
-		return err
-	}
-
+	fmt.Print(response.Contents)
 	return nil
 }

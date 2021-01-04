@@ -1,9 +1,11 @@
 package main
 
 import (
+	"os"
+
 	"github.com/oclaussen/chirp/pkg/command"
 )
 
 func main() {
-	command.NewCommand().Execute()
+	os.Exit(command.Execute())
 }

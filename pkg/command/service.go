@@ -1,12 +1,10 @@
 package command
 
 import (
-	"os"
 	"os/user"
 	"runtime"
 
 	"github.com/kardianos/service"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -27,17 +25,15 @@ func NewServiceInstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install chirp server as a system service",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
+
 			svc, err := newService()
 			if err != nil {
-				log.Error(err)
-				os.Exit(1)
+				return err
 			}
-			if err := svc.Install(); err != nil {
-				log.Error(err)
-				os.Exit(1)
-			}
+
+			return svc.Install()
 		},
 	}
 	return cmd
@@ -47,17 +43,15 @@ func NewServiceUninstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Short: "Uninstall chirp system service",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
+
 			svc, err := newService()
 			if err != nil {
-				log.Error(err)
-				os.Exit(1)
+				return err
 			}
-			if err := svc.Uninstall(); err != nil {
-				log.Error(err)
-				os.Exit(1)
-			}
+
+			return svc.Uninstall()
 		},
 	}
 	return cmd
@@ -67,17 +61,14 @@ func NewServiceStartCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start chirp system service",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
+
 			svc, err := newService()
 			if err != nil {
-				log.Error(err)
-				os.Exit(1)
+				return err
 			}
-			if err := svc.Start(); err != nil {
-				log.Error(err)
-				os.Exit(1)
-			}
+			return svc.Start()
 		},
 	}
 	return cmd
@@ -87,17 +78,15 @@ func NewServiceStopCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop chirp system service",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
+
 			svc, err := newService()
 			if err != nil {
-				log.Error(err)
-				os.Exit(1)
+				return err
 			}
-			if err := svc.Stop(); err != nil {
-				log.Error(err)
-				os.Exit(1)
-			}
+
+			return svc.Stop()
 		},
 	}
 	return cmd

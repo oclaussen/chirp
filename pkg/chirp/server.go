@@ -1,21 +1,38 @@
 package chirp
 
 import (
+	"bytes"
+	"context"
 	"net"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
+	"strings"
 
+	api "github.com/oclaussen/chirp/api/v1"
 	"github.com/oclaussen/chirp/pkg/clipboard"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 )
 
-var (
-	copyCmd  = string('<')
-	pasteCmd = string('>')
-)
+type ClipboardServer struct{}
+
+func (server *ClipboardServer) Copy(ctx context.Context, request *api.CopyRequest) (*api.CopyResponse, error) {
+	if err := clipboard.Copy(strings.NewReader(request.Contents)); err != nil {
+		return nil, err
+	}
+
+	return &api.CopyResponse{}, nil
+}
+
+func (server *ClipboardServer) Paste(ctx context.Context, request *api.PasteRequest) (*api.PasteResponse, error) {
+	var buf bytes.Buffer
+	if err := clipboard.Paste(&buf); err != nil {
+		return nil, err
+	}
+
+	return &api.PasteResponse{Contents: buf.String()}, nil
+}
 
 func Server(socketType string, addr string) error {
 	if err := clipboard.Check(); err != nil {
@@ -45,49 +62,7 @@ func Server(socketType string, addr string) error {
 	}
 	defer listener.Close()
 
-	go handleRequests(listener)
-
-	killChan := make(chan os.Signal, 1)
-	signal.Notify(killChan, os.Interrupt, syscall.SIGTERM)
-	sig := <-killChan
-	log.WithFields(log.Fields{"signal": sig}).Info("received signal")
-	return nil
-
-}
-
-func handleRequests(listener net.Listener) {
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		log.Info("connection opened")
-
-		go func() {
-			defer func() {
-				conn.Close()
-				log.Info("connection closed")
-			}()
-
-			cmd := make([]byte, 1)
-			if _, err := conn.Read(cmd); err != nil {
-				log.Error(err)
-				return
-			}
-
-			switch string(cmd) {
-			case copyCmd:
-				if err := clipboard.Copy(conn); err != nil {
-					log.Error(err)
-				}
-			case pasteCmd:
-				if err := clipboard.Paste(conn); err != nil {
-					log.Error(err)
-				}
-			default:
-				log.WithFields(log.Fields{"cmd": cmd}).Error("unexpected command")
-			}
-		}()
-	}
+	grpcServer := grpc.NewServer()
+	api.RegisterClipboardServiceServer(grpcServer, &ClipboardServer{})
+	return grpcServer.Serve(listener)
 }

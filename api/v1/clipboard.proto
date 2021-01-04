@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.github.oclaussen.chirp.api.v1;
+
+option go_package = "github.com/oclaussen/chirp/api/v1";
+
+service ClipboardService {
+  rpc Copy(CopyRequest) returns (CopyResponse);
+  rpc Paste(PasteRequest) returns (PasteResponse);
+}
+
+message CopyRequest {
+  string contents = 1;
+}
+
+message CopyResponse {
+}
+
+message PasteRequest {
+}
+
+message PasteResponse {
+  string contents = 1;
+}

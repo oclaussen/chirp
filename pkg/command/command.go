@@ -1,8 +1,6 @@
 package command
 
 import (
-	"os"
-
 	"github.com/oclaussen/chirp/pkg/chirp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -19,6 +17,15 @@ var opts options
 type options struct {
 	socketType string
 	address    string
+}
+
+func Execute() int {
+	if err := NewCommand().Execute(); err != nil {
+		log.Error(err)
+		return 1
+	}
+
+	return 0
 }
 
 func NewCommand() *cobra.Command {
@@ -39,12 +46,9 @@ func NewServerCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "server",
 		Short: "Start in server mode and wait for incoming clipboard requests",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			serverLogging()
-			if err := chirp.Server(opts.socketType, opts.address); err != nil {
-				log.Error(err)
-				os.Exit(1)
-			}
+			return chirp.Server(opts.socketType, opts.address)
 		},
 	}
 }
@@ -53,12 +57,15 @@ func NewCopyCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "copy",
 		Short: "Send a copy request to the clipboard",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
-			if err := chirp.Copy(opts.socketType, opts.address); err != nil {
-				log.Error(err)
-				os.Exit(1)
+
+			client, err := chirp.NewClient(opts.socketType, opts.address)
+			if err != nil {
+				return err
 			}
+
+			return client.Copy()
 		},
 	}
 }
@@ -67,12 +74,15 @@ func NewPasteCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "paste",
 		Short: "Send a paste request to the clipboard",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
-			if err := chirp.Paste(opts.socketType, opts.address); err != nil {
-				log.Error(err)
-				os.Exit(1)
+
+			client, err := chirp.NewClient(opts.socketType, opts.address)
+			if err != nil {
+				return err
 			}
+
+			return client.Paste()
 		},
 	}
 }
