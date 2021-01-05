@@ -6,6 +6,7 @@ import (
 	"github.com/oclaussen/chirp/pkg/chirp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -14,24 +15,27 @@ const (
 	description   = "Access system clipboard over network"
 )
 
-var opts options
-
-type options struct {
-	socketType string
-	address    string
-}
-
 func Execute() int {
-	if err := NewCommand().Execute(); err != nil {
-		log.Error(err)
+	viper.SetDefault("type", "tcp")
+	viper.SetDefault("address", "127.0.0.1:24709")
 
-		return 1
+	viper.SetEnvPrefix(name)
+
+	viper.SetConfigName(name)
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(fmt.Sprintf("/etc/%s", name))
+	viper.AddConfigPath(fmt.Sprintf("$HOME/.%s", name))
+
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Warn(fmt.Errorf("no configuration file found: %w", err))
+		} else {
+			log.Error(fmt.Errorf("could not read config file: %w", err))
+
+			return 1
+		}
 	}
 
-	return 0
-}
-
-func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{Use: name, Short: description}
 	cmd.AddCommand(NewServerCommand())
 	cmd.AddCommand(NewCopyCommand())
@@ -39,10 +43,22 @@ func NewCommand() *cobra.Command {
 	cmd.AddCommand(NewServiceCommand())
 
 	flags := cmd.PersistentFlags()
-	flags.StringVarP(&opts.socketType, "type", "t", "tcp", "socket type to listen on (tcp or unix)")
-	flags.StringVarP(&opts.address, "address", "a", "127.0.0.1:24709", "address to bind to")
+	flags.StringP("type", "t", "", "socket type to listen on (tcp or unix)")
+	flags.StringP("address", "a", "", "address to bind to")
 
-	return cmd
+	if err := viper.BindPFlags(flags); err != nil {
+		log.Error(err)
+
+		return 1
+	}
+
+	if err := cmd.Execute(); err != nil {
+		log.Error(err)
+
+		return 1
+	}
+
+	return 0
 }
 
 func NewServerCommand() *cobra.Command {
@@ -52,7 +68,7 @@ func NewServerCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serverLogging()
 
-			return chirp.Server(opts.socketType, opts.address)
+			return chirp.Server(viper.GetString("type"), viper.GetString("address"))
 		},
 	}
 }
@@ -64,7 +80,7 @@ func NewCopyCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
 
-			client, err := chirp.NewClient(opts.socketType, opts.address)
+			client, err := chirp.NewClient(viper.GetString("type"), viper.GetString("address"))
 			if err != nil {
 				return fmt.Errorf("cannot create chirp client: %w", err)
 			}
@@ -81,7 +97,7 @@ func NewPasteCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientLogging()
 
-			client, err := chirp.NewClient(opts.socketType, opts.address)
+			client, err := chirp.NewClient(viper.GetString("type"), viper.GetString("address"))
 			if err != nil {
 				return fmt.Errorf("cannot create chirp client: %w", err)
 			}

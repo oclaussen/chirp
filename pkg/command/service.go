@@ -6,6 +6,7 @@ import (
 
 	"github.com/kardianos/service"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func NewServiceCommand() *cobra.Command {
@@ -114,7 +115,7 @@ func newService() (service.Service, error) {
 		DisplayName: name,
 		Description: description,
 		Option:      map[string]interface{}{},
-		Arguments:   []string{"server", "--type", opts.socketType, "--address", opts.address},
+		Arguments:   []string{"server", "--type", viper.GetString("type"), "--address", viper.GetString("address")},
 	}
 
 	if u, err := user.Current(); err == nil && u.Uid != "0" {
