@@ -19,24 +19,26 @@ Available Commands:
   service     Manage the chirp server as a system service
 
 Flags:
-  -a, --address string   address to bind to (default "127.0.0.1:24709")
-  -h, --help             help for chirp
-  -t, --type string      socket type to listen on (tcp or unix) (default "tcp")
+  -a, --address string         address to bind to
+  -h, --help                   help for chirp
+      --tls-ca-file string     tls certificate authority file
+      --tls-cert-file string   tls certificate file
+      --tls-key-file string    tls key file
 
 Use "chirp [command] --help" for more information about a command.
 ```
 
-First, run the chirp server somewhere with a clipboard (e.g. a command like `xclip` or `pbcopy` must be in the available). For example, run a chirp server and listen to a unix socket:
+First, run the chirp server somewhere with a clipboard (e.g. a command like `xclip` or `pbcopy` must be available). For example, run a chirp server and listen to a unix socket:
 
 ```bash
-$ chirp server --type unix --address /var/run/chirp.sock
+$ chirp server --address unix:///var/run/chirp.sock
 ```
 
 Then you can copy and paste from anywhere like this:
 
 ```bash
-$ echo "Hello World!" | chirp copy --type unix --address /var/run/chirp.sock
-$ chirp paste --type unix --address /var/run/chirp.sock
+$ echo "Hello World!" | chirp copy --address unix:///var/run/chirp.sock
+$ chirp paste --address unix:///var/run/chirp.sock
 Hello World!
 ```
 
@@ -52,7 +54,6 @@ $ chirp service start
 
 ## Current limitations
 
- * Chirp does currenly not provide any form of authentication. You should not listen to anything that is not a unix socket or loopback interface unless you know what you are doing.
  * Chirp does not maintain any configuration or state. You have to pass exactly the same arguments to `copy` and `paste` commands that you used to run the server.
  * Works on Linux and OSX. Windows is not (yet) supported because I simply don't have a test setup.
  * Running as system service works only out of the box on OSX. Running the install commands with systemd will create the correct services, but not start them as the correct user. I.e. it will not access the desired clipboard.
@@ -60,7 +61,7 @@ $ chirp service start
 ## License & Authors
 
 ```text
-Copyright 2019 Ole Claussen
+Copyright 2021 Ole Claussen
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

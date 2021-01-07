@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 
 	api "github.com/oclaussen/chirp/api/v1"
 	"google.golang.org/grpc"
@@ -17,23 +16,22 @@ type ClipboardClient struct {
 	client api.ClipboardServiceClient
 }
 
-func NewClient(socketType string, addr string) (*ClipboardClient, error) {
-	if socketType == "unix" {
-		addr, err := filepath.Abs(addr)
-		if err != nil {
-			return nil, fmt.Errorf("could not get socket path: %w", err)
-		}
+func NewClient(config *Config) (*ClipboardClient, error) {
+	protocol, addr, err := config.DialOptions()
+	if err != nil {
+		return nil, fmt.Errorf("invalid connection config: %w", err)
+	}
 
-		if _, err := os.Stat(addr); err != nil {
-			return nil, fmt.Errorf("could not get unix socket: %w", err)
-		}
+	creds, err := config.TLSClientOptions()
+	if err != nil {
+		return nil, err
 	}
 
 	conn, err := grpc.Dial(
 		addr,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
-			return net.Dial(socketType, addr)
+			return net.Dial(protocol, addr)
 		}),
 	)
 	if err != nil {

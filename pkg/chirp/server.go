@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
 
 	api "github.com/oclaussen/chirp/api/v1"
 	"github.com/oclaussen/chirp/pkg/clipboard"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
-type ClipboardServer struct{}
+type ClipboardServer struct {
+	listener net.Listener
+	server   *grpc.Server
+}
 
-func (server *ClipboardServer) Copy(ctx context.Context, request *api.CopyRequest) (*api.CopyResponse, error) {
+func (s *ClipboardServer) Copy(ctx context.Context, request *api.CopyRequest) (*api.CopyResponse, error) {
 	if err := clipboard.CopyString(request.Contents); err != nil {
 		return nil, fmt.Errorf("could not copy from clipboard: %w", err)
 	}
@@ -23,7 +23,7 @@ func (server *ClipboardServer) Copy(ctx context.Context, request *api.CopyReques
 	return &api.CopyResponse{}, nil
 }
 
-func (server *ClipboardServer) Paste(ctx context.Context, request *api.PasteRequest) (*api.PasteResponse, error) {
+func (s *ClipboardServer) Paste(ctx context.Context, request *api.PasteRequest) (*api.PasteResponse, error) {
 	contents, err := clipboard.PasteString()
 	if err != nil {
 		return nil, fmt.Errorf("could not paste to clipboard: %w", err)
@@ -32,39 +32,40 @@ func (server *ClipboardServer) Paste(ctx context.Context, request *api.PasteRequ
 	return &api.PasteResponse{Contents: contents}, nil
 }
 
-func Server(socketType string, addr string) error {
+func NewServer(config *Config) (*ClipboardServer, error) {
 	if err := clipboard.Check(); err != nil {
-		return fmt.Errorf("cannot use clipboard: %w", err)
+		return nil, fmt.Errorf("cannot use clipboard: %w", err)
 	}
 
-	if socketType == "unix" {
-		addr, err := filepath.Abs(addr)
-		if err != nil {
-			return fmt.Errorf("could not get socket path: %w", err)
-		}
-
-		if _, err := os.Stat(addr); !os.IsNotExist(err) {
-			if _, err = net.Dial("unix", addr); err == nil {
-				return fmt.Errorf("socket already exists at %s: %w", addr, err)
-			}
-
-			if err = os.Remove(addr); err != nil {
-				return fmt.Errorf("could not remove stale socket at %s: %w", addr, err)
-			}
-		}
-	}
-
-	log.WithFields(log.Fields{"type": socketType, "address": addr}).Info("listening...")
-
-	listener, err := net.Listen(socketType, addr)
+	protocol, addr, err := config.DialOptions()
 	if err != nil {
-		return fmt.Errorf("could not start server socket: %w", err)
+		return nil, fmt.Errorf("invalid connection config: %w", err)
 	}
 
-	defer listener.Close()
+	if _, err = net.Dial(protocol, addr); err == nil {
+		return nil, fmt.Errorf("server already exists at %s: %w", addr, err)
+	}
 
-	grpcServer := grpc.NewServer()
-	api.RegisterClipboardServiceServer(grpcServer, &ClipboardServer{})
+	creds, err := config.TLSServerOptions()
+	if err != nil {
+		return nil, err
+	}
 
-	return grpcServer.Serve(listener)
+	listener, err := net.Listen(protocol, addr)
+	if err != nil {
+		return nil, fmt.Errorf("could not start server socket: %w", err)
+	}
+
+	return &ClipboardServer{
+		listener: listener,
+		server:   grpc.NewServer(grpc.Creds(creds)),
+	}, nil
+}
+
+func (s *ClipboardServer) Listen() error {
+	defer s.listener.Close()
+
+	api.RegisterClipboardServiceServer(s.server, s)
+
+	return s.server.Serve(s.listener)
 }

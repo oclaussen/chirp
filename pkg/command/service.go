@@ -5,8 +5,8 @@ import (
 	"runtime"
 
 	"github.com/kardianos/service"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func NewServiceCommand() *cobra.Command {
@@ -27,15 +27,10 @@ func NewServiceInstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install chirp server as a system service",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientLogging()
-
-			svc, err := newService()
-			if err != nil {
-				return err
-			}
-
-			return svc.Install()
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withService(func(s service.Service) error {
+				return s.Install()
+			})
 		},
 	}
 
@@ -46,15 +41,10 @@ func NewServiceUninstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Short: "Uninstall chirp system service",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientLogging()
-
-			svc, err := newService()
-			if err != nil {
-				return err
-			}
-
-			return svc.Uninstall()
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withService(func(s service.Service) error {
+				return s.Uninstall()
+			})
 		},
 	}
 
@@ -65,15 +55,10 @@ func NewServiceStartCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start chirp system service",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientLogging()
-
-			svc, err := newService()
-			if err != nil {
-				return err
-			}
-
-			return svc.Start()
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withService(func(s service.Service) error {
+				return s.Start()
+			})
 		},
 	}
 
@@ -84,15 +69,10 @@ func NewServiceStopCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop chirp system service",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientLogging()
-
-			svc, err := newService()
-			if err != nil {
-				return err
-			}
-
-			return svc.Stop()
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return withService(func(s service.Service) error {
+				return s.Stop()
+			})
 		},
 	}
 
@@ -115,7 +95,7 @@ func newService() (service.Service, error) {
 		DisplayName: name,
 		Description: description,
 		Option:      map[string]interface{}{},
-		Arguments:   []string{"server", "--type", viper.GetString("type"), "--address", viper.GetString("address")},
+		Arguments:   []string{"server"},
 	}
 
 	if u, err := user.Current(); err == nil && u.Uid != "0" {
@@ -127,4 +107,18 @@ func newService() (service.Service, error) {
 	}
 
 	return service.New(&program{}, config)
+}
+
+func withService(f func(service.Service) error) error {
+	log.SetFormatter(&log.TextFormatter{
+		DisableTimestamp:       true,
+		DisableLevelTruncation: true,
+	})
+
+	svc, err := newService()
+	if err != nil {
+		return err
+	}
+
+	return f(svc)
 }
