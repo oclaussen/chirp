@@ -5,10 +5,10 @@ go:
 
 before_install:
   - go get -u github.com/mitchellh/gox
-  - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.33.0
 
 script:
-  - env GO111MODULE=on make all
+  - make all
 
 branches:
   only: 
