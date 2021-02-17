@@ -24,6 +24,10 @@ func NewConfigureCommand() *cobra.Command {
 func Configure() error {
 	appdir := filepath.Join(os.Getenv("HOME"), fmt.Sprintf(".%s", name))
 
+	if err := os.MkdirAll(appdir, 0600); err != nil {
+		return fmt.Errorf("could not create config directory: %w", err)
+	}
+
 	u, err := url.Parse(viper.GetString(ConfKeyAddress))
 	if err != nil {
 		return fmt.Errorf("invalid address: %w", err)

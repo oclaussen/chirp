@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/oclaussen/chirp/pkg/chirp"
@@ -30,7 +31,8 @@ func withServer(f func(*chirp.ClipboardServer) error) error {
 	viper.SetConfigName("server")
 
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		var e *viper.ConfigFileNotFoundError
+		if errors.As(err, &e) {
 			log.Warn("no configuration file found: %w")
 		} else {
 			return fmt.Errorf("could not read config file: %w", err)

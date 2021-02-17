@@ -67,7 +67,7 @@ func (c *ClipboardClient) Paste() error {
 		return fmt.Errorf("could not send paste command: %w", err)
 	}
 
-	fmt.Print(response.Contents)
+	fmt.Fprint(os.Stdout, response.Contents)
 
 	return nil
 }
