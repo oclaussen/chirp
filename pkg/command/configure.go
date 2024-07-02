@@ -35,7 +35,7 @@ func Configure() error {
 
 	_, files, err := ssl.GimmeCertificates(&ssl.Options{
 		Org:          name,
-		Hosts:        []string{u.Hostname()},
+		Hosts:        []string{u.Hostname(), "localhost"},
 		WriteToFiles: &ssl.Files{Directory: appdir},
 	})
 	if err != nil {

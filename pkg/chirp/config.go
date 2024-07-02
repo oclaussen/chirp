@@ -2,9 +2,10 @@ package chirp
 
 import (
 	"crypto/tls"
+        "strings"
+        "os"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"path/filepath"
 
@@ -30,22 +31,22 @@ type Config struct {
 }
 
 func (c *Config) DialOptions() (string, string, error) {
-	u, err := url.Parse(c.Address)
-	if err != nil {
-		return "", "", fmt.Errorf("invalid address: %w", err)
+  values := strings.SplitN(c.Address, "://", 2)
+	if len(values) != 2 {
+		return "", "", ErrInvalidAddressScheme
 	}
 
-	switch u.Scheme {
+	switch values[0] {
 	case "tcp":
-		return u.Scheme, u.Host, nil
+		return values[0], values[1], nil
 
 	case "unix":
-		addr, err := filepath.Abs(u.Host)
+		addr, err := filepath.Abs(values[1])
 		if err != nil {
 			return "", "", fmt.Errorf("could not get socket path: %w", err)
 		}
 
-		return u.Scheme, addr, nil
+		return values[0], addr, nil
 	}
 
 	return "", "", ErrInvalidAddressScheme
@@ -66,7 +67,7 @@ func (c *Config) TLSServerOptions() (credentials.TransportCredentials, error) {
 
 	tlsConfig.Certificates = append(tlsConfig.Certificates, certificate)
 
-	bs, err := ioutil.ReadFile(c.CAFile)
+	bs, err := os.ReadFile(c.CAFile)
 	if err != nil {
 		return nil, fmt.Errorf("could not read ca file: %w", err)
 	}
@@ -101,7 +102,7 @@ func (c *Config) TLSClientOptions() (credentials.TransportCredentials, error) {
 
 	tlsConfig.Certificates = append(tlsConfig.Certificates, certificate)
 
-	bs, err := ioutil.ReadFile(c.CAFile)
+	bs, err := os.ReadFile(c.CAFile)
 	if err != nil {
 		return nil, fmt.Errorf("could not read ca file: %w", err)
 	}

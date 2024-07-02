@@ -3,8 +3,7 @@ package chirp
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"net"
+        "io"
 	"os"
 
 	api "github.com/oclaussen/chirp/api/v1"
@@ -17,22 +16,14 @@ type ClipboardClient struct {
 }
 
 func NewClient(config *Config) (*ClipboardClient, error) {
-	protocol, addr, err := config.DialOptions()
-	if err != nil {
-		return nil, fmt.Errorf("invalid connection config: %w", err)
-	}
-
 	creds, err := config.TLSClientOptions()
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(
-		addr,
+	conn, err := grpc.NewClient(
+		config.Address,
 		grpc.WithTransportCredentials(creds),
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
-			return net.Dial(protocol, addr)
-		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to server: %w", err)
@@ -49,7 +40,7 @@ func (c *ClipboardClient) Close() {
 }
 
 func (c *ClipboardClient) Copy() error {
-	bytes, err := ioutil.ReadAll(os.Stdin)
+	bytes, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return fmt.Errorf("could not read stdin data: %w", err)
 	}
